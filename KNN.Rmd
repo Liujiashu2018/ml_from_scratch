@@ -1,0 +1,200 @@
+---
+title: "KNN draft"
+output: html_document
+date: "2023-11-26"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Code KNN algorithm from scratch 
+
+1. KNN is a non-parametric algorithm.
+2. Thoughts on coding KNN:
+- Different distance measures (most commenly used: Euclidean)
+- Choose the number of k nears neighbors
+- Make predictions from the algorithm 
+
+
+```{r}
+library(tidyr)
+library(dplyr)
+library(tidyverse)
+```
+## Euclidean Distance: 
+Distance between points $x_i$ and $x_j$ in p-dimentional space. It measures the diagonal distance between the two points.
+$$d(\vec{x_i}, \vec{x_j}) = \sqrt{(x_{i1}+x_{j1})^2+ (x_{i2}+x_{j2})^2 + ...+(x_{ip}+x_{jp})}$$
+```{r}
+euclidean_distance = function(a, b){
+  #  We check that they have the same number of observation
+  if(length(a) == length(b)){
+    sqrt(sum((a-b)^2))  
+  } else{
+    stop('Vectors must be of the same length')
+  }
+}
+```
+
+Manhattan Distance
+$$ Mdis = |x_2 – x_1| + |y_2 – y_1|$$
+```{r}
+manhattan_distance = function(a, b){
+  #  We check that they have the same number of observation
+  if(length(a) == length(b)){
+    sum(abs(a-b))
+  } else{
+    stop('Vectors must be of the same length')
+  }
+}
+```
+
+Minkowski Distance:
+p = 1: Manhattan distance
+p = 2: Euclidean distance
+1 and 2 are the most commonly used value for Minkowski Distance, but it can also take other values. 
+$$ Minkowski = \Bigg(\sum^d_{l=1}|x_{il}-x_{jl}|^{1/p}\Bigg)^p$$
+```{r}
+minkowski_distance = function(a,b,p){
+  if(p<=0){
+   stop('p must be higher than 0') 
+  }
+
+  if(length(a)== length(b)){
+    sum(abs(a-b)^p)^(1/p)
+  }else{
+     stop('Vectors must be of the same length')
+
+  }
+}
+```
+
+## Find nearest neighbors
+
+```{r}
+find_nearest_neighbors = function(x, obs, k, dist, p = NULL) {
+  
+  # Check the number of observations is the same
+  if (ncol(x) != length(obs)) {
+    stop('Data must have the same number of variables')
+  }
+
+  # Calculate distance, considering p for Minkowski
+  if (is.null(p)) {
+    distances = apply(x, 1, dist, obs)
+  } else {
+    distances = apply(x, 1, dist, obs, p)
+  }
+
+  # Order distances and get indices of the nearest neighbors
+  sorted_indices = order(distances)
+  neighbor_indices = sorted_indices[1:k]
+
+  # Handle ties in distances
+  if (length(unique(distances[neighbor_indices])) != k) {
+    warning('There are ties in the distances. More than k neighbors are equidistant.')
+  }
+
+  # Return a list containing indices of neighbors and their distances
+  return(neighbor_indices)
+}
+```
+
+## Prediction for classification problem
+
+```{r}
+predict_knn_classification = function(neighbors, y_train) {
+  # Creating a frequency table of the classes for the nearest neighbors
+  class_counts = table(y_train[neighbors])
+
+  # Finding the class(es) with the maximum frequency
+  max_count = max(class_counts)
+  most_frequent_classes = names(class_counts)[class_counts == max_count]
+
+  # Handling ties
+  if (length(most_frequent_classes) > 1) {
+    warning('Tie in class frequencies. Returning all tied classes.')
+    return(most_frequent_classes)
+  }
+
+  # Returning the most frequent class
+  return(most_frequent_classes)
+}
+```
+
+## Prediction for regression problem 
+
+```{r}
+predict_knn_regression = function(neighbors, y_train) {
+  # Calculate the average of the target values for the nearest neighbors
+  mean_value = mean(y_train[neighbors])
+
+  # Return the mean value as the prediction
+  return(mean_value)
+}
+```
+
+## Make Prediction
+
+```{r}
+knn = function(x_train, target_var, x_test, k, dist, is_regression = FALSE, p = NULL) {
+  predictions = vector(length = nrow(x_test))
+  
+  for (i in 1:nrow(x_test)) {
+    # Extracting test observation
+    test_obs = x_test[i,]
+
+    # Finding nearest neighbors using find_nearest_neighbors function
+    neighbors = find_nearest_neighbors(x_train, test_obs, k, dist, p)
+
+    if (is_regression) {
+      # Regression prediction
+      predictions[i] = predict_knn_regression(neighbors, target_var)
+    } else {
+      # Classification prediction
+      predictions[i] = predict_knn_classification(neighbors, target_var)
+    }
+  }
+  
+  return(predictions)
+}
+```
+
+## Test with penguins data
+
+```{r}
+library(palmerpenguins)
+
+# Load the penguins dataset
+data("penguins")
+penguins <- na.omit(penguins)  # Remove rows with missing values
+# Selecting features and target variable
+features <- penguins[, c("bill_length_mm", "bill_depth_mm", "flipper_length_mm", "body_mass_g")]
+target <- penguins$species
+```
+
+```{r}
+set.seed(123) 
+
+# Sample indices for splitting the data
+indices <- sample(1:nrow(features), size = 0.7 * nrow(features))
+
+# Create training and test sets
+train_features <- features[indices, ]
+train_target <- target[indices]
+test_features <- features[-indices, ]
+test_target <- target[-indices]
+```
+
+```{r}
+predictions <- knn(x_train = train_features, target_var = train_target, x_test = test_features, k = 5, dist = euclidean_distance, is_regression = FALSE)
+```
+
+```{r}
+# Calculate accuracy
+accuracy <- sum(predictions == test_target) / length(test_target)
+print(paste("Accuracy:", accuracy))
+```
+
+
+
+
