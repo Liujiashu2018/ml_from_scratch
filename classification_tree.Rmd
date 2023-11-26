@@ -1,0 +1,131 @@
+---
+title: "Classification Trees"
+output: html_document
+date: "2023-11-19"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(palmerpenguins)
+library(tidyverse)
+library(dplyr)
+library(stringr)
+data("penguins")
+# Classification question: species classification
+# Predict the species of the penguin (e.g., Adelie, Chinstrap, Gentoo) based on other variables such as bill length, bill depth, flipper length, body mass, island, and sex.
+```
+
+```{r}
+# Preprocessing Data
+penguins <- na.omit(penguins)
+penguins <- penguins %>% 
+  select(-year)
+#penguins$island <- as.numeric(as.factor(penguins$island))
+#penguins$sex <- as.numeric(as.factor(penguins$sex))
+```
+
+Thoughts on building a simple classification tree:
+
+1. Define a function for gini_impurity
+2. Loop over all the predictors and possible split points. Pick the predictor that result in the lowest weighted average Gini impurity.
+
+Note: for numeric predictors, we should calculate the average for all adjacent penguins, and then calcualte the Gini impurity for each average numeric value.
+Choose the threshold that has the lowest weighted total Gini impurity
+
+3. Starting from the previously formed regions, repeat step 2. 
+4. Stop once no possible split can lower a node's Gini impurity. 
+
+```{r}
+numeric_features <- names(penguins)[sapply(penguins, is.numeric)]
+categorical_features <- names(penguins)[sapply(penguins, is.factor)] 
+
+print("Numeric Features:")
+print(numeric_features)
+
+print("Categorical Features:")
+print(categorical_features)
+```
+```{r}
+logical_vector <-penguins[['bill_length_mm']]<= 38
+print(logical_vector)
+```
+
+
+```{r}
+# Gini Index 
+gini_impure <- function(S){
+  p <- table(S)/length(S)
+  impurity <- 1 - sum(p^2)
+  return(impurity)
+}
+```
+
+```{r}
+# Best Split 
+best_split <- function(data, target){
+  best_split <- NULL
+  lowest_impurity <- Inf
+  best_var <- NULL
+  best_threshold <- NULL
+  
+  # Loop through each predictor
+  for (var in names(data)){
+    if (var == target) next #skip the target variable
+    # separate handling for numeric and categorical predictors
+    if (is.numeric(data[[var]])) {
+      # for numeric predictors
+      values <- sort(unique(data[[var]]))
+      thresholds <- (values[-length(values)] + values[-1]) / 2 
+      # values[-length(values)] --> excluding the last element of the vector because there's no "next value" to pair it with for calculating an average
+      # values[-1] --> takes all elements of the values vector except the first one
+    }else {
+      # for categorical predictors
+      thresholds <- unique(data[[var]])
+    }
+    for (threshold in thresholds) {
+      if (is.numeric(data[[var]])) {
+        left_split <- data[data[[var]] <= threshold, ]
+        right_split <- data[data[[var]] > threshold, ]
+      } else {
+        left_split <- data[data[[var]] == threshold, ]
+        right_split <- data[data[[var]] != threshold, ]}
+      
+      # calculate weighted Gini impurity
+      left_impurity <- gini_impure(left_split[[target]])
+      right_impurity <- gini_impure(right_split[[target]])
+      total_impurity <- (nrow(left_split) * left_impurity + nrow(right_split) * right_impurity) / nrow(data)
+      
+      # update best split if this is the lowest impurity found so far
+      if (total_impurity < lowest_impurity) {
+        lowest_impurity <- total_impurity
+        best_split <- list(variable = var, threshold = threshold)
+        best_var <- var
+        best_threshold <- threshold
+      }
+    }
+  }
+  return(best_split)
+}
+```
+
+Recursive splitting missing...
+
+```{r}
+set.seed(123) 
+sample_size <- floor(0.8 * nrow(penguins))
+train_indices <- sample(seq_len(nrow(penguins)), size = sample_size)
+train_data <- penguins[train_indices, ]
+test_data <- penguins[-train_indices, ]
+
+target_variable <- "species"
+```
+
+```{r}
+print(my_tree)
+```
+
+
+
