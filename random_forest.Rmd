@@ -31,7 +31,7 @@ test_data <- penguins[-sample_indices, ]
 
 ```{r}
 #use rpart package
-ensemble_predict <- function(train_data, test_data, target_variable, num_trees = 100) {
+ensemble_predict <- function(train_data, test_data, target_variable, num_trees = 100, label_mapping = NULL) {
   # Initialize an empty list to store individual decision trees
   tree_list <- list()
 
@@ -54,8 +54,12 @@ ensemble_predict <- function(train_data, test_data, target_variable, num_trees =
   # Combine predictions (majority vote)
   ensemble_pred <- do.call(cbind, predictions)
 
+  # If label mapping is not provided, create a default one for species
+  if (is.null(label_mapping)) {
+    label_mapping <- c("1" = "Adelie", "2" = "Chinstrap", "3" = "Gentoo")
+  }
+
   # Map numerical labels to character labels
-  label_mapping <- c("1" = "Adelie", "2" = "Chinstrap", "3" = "Gentoo")
   final_pred <- apply(ensemble_pred, 1, function(row) {
     majority_vote <- names(sort(table(row), decreasing = TRUE)[1])
     return(label_mapping[majority_vote])
@@ -64,13 +68,13 @@ ensemble_predict <- function(train_data, test_data, target_variable, num_trees =
   return(final_pred)
 }
 
-#use penguins data
+#for penguins
 target_variable <- "species"
 ensemble_pred <- ensemble_predict(train_data, test_data, target_variable)
 
 # Evaluate the accuracy of the ensemble model
 ensemble_accuracy <- sum(ensemble_pred == test_data$species) / nrow(test_data)
-cat("Ensemble (rpart) Accuracy:", ensemble_accuracy, "\n")#Ensemble (rpart) Accuracy: 0.96
+cat("Ensemble (rpart) Accuracy:", ensemble_accuracy, "\n")#0.95
 ```
 
 ```{r}
