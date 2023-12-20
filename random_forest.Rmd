@@ -126,5 +126,5 @@ cat("Tuned Ensemble(rpart) Accuracy:",rf_cv_accuracy,"\n")##Tuned Ensemble Accur
 ```
 
 how this ensemble function works:
-first we use with-replacement sampling of train dataset to build multiple tress(which are parallel), then we make predictions based on each tree and decide the final prediction using the majority vote, here the ouput would be character "1", "2" and "3", use mapping to transform them to labels of data. Finally we compare the prediction with the test dataset and calculate the accuracy.
+First we use with-replacement sampling of train dataset to build multiple tress(which are parallel), then we make predictions based on each tree and decide the final prediction using the majority vote(may use mapping to transform to labels of data). Finally we compare the prediction with the test dataset and calculate the accuracy.
 In this dataset(penguins), using ensemble function we write acheives accuracy of 0.95, and using random forest package we acheives accuracy of 0.97, which turns out we have set a quite good algorithm.
