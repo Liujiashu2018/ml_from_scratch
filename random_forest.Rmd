@@ -1,0 +1,114 @@
+---
+title: "random_forest"
+date: "2023-12-20"
+output: html_document
+---
+```{r}
+library(palmerpenguins)
+library(tidyverse)
+library(dplyr)
+library(stringr)
+library(caret)
+library(randomForest)
+library(rpart)
+data("penguins")
+```
+
+```{r}
+#data pre_processing
+penguins <- na.omit(penguins)
+penguins <- penguins %>% 
+  select(-year)
+```
+
+```{r}
+#split the data into train and test data
+set.seed(123)
+sample_indices <- sample(1:nrow(penguins), 0.7 * nrow(penguins))
+train_data <- penguins[sample_indices, ]
+test_data <- penguins[-sample_indices, ]
+```
+
+```{r}
+#use rpart package
+num_trees <- 100# Number of decision trees to create (simulating random forest)
+tree_list <- list()# Initialize an empty list to store individual decision trees
+
+# Build multiple decision trees
+for (i in 1:num_trees) {
+  # Create a bootstrap sample (sampling with replacement)
+  bootstrap_sample <- train_data[sample(1:nrow(train_data), replace = TRUE), ]
+  # Build a decision tree using rpart
+  tree <- rpart(species ~ ., data = bootstrap_sample, method = "class")
+  # Add the tree to the list
+  tree_list[[i]] <- tree
+}
+
+# Function to predict using the ensemble of decision trees
+ensemble_predict <- function(trees, data) {
+  # Make predictions using each tree
+  predictions <- lapply(trees, function(tree) predict(tree, newdata = data, type = "class"))
+  # Combine predictions (majority vote)
+  ensemble_pred <- do.call(cbind, predictions)
+  # Map numerical labels to character labels
+  label_mapping <- c("1" = "Adelie", "2" = "Chinstrap", "3" = "Gentoo")
+  final_pred <- apply(ensemble_pred, 1, function(row) {
+    majority_vote <- names(sort(table(row), decreasing = TRUE)[1])
+    return(label_mapping[majority_vote])
+  })
+  
+  return(final_pred)
+}
+# Predict using the ensemble of decision trees
+ensemble_pred <- ensemble_predict(tree_list, test_data)
+
+# Evaluate the accuracy of the ensemble model
+ensemble_accuracy <- sum(ensemble_pred == test_data$species) / nrow(test_data)
+cat("Ensemble (rpart) Accuracy:", ensemble_accuracy, "\n")##Ensemble Accuracy: 0.95
+```
+
+```{r}
+#using randomforest package
+rf_model <- randomForest(species ~ ., data = train_data, ntree = 100)
+# Predict on the test set
+rf_pred <- predict(rf_model, newdata = test_data)
+# Evaluate the accuracy of the Random Forest model
+rf_accuracy <- sum(rf_pred == test_data$species) / nrow(test_data)
+cat("Random Forest Accuracy:", rf_accuracy, "\n")##Random Forest Accuracy: 0.97 
+```
+
+```{r}
+#cross-validation to prune hyperparameter complexity parameter (cp) 
+# Define the tuning grid which default is 0.01
+tuning_grid <- expand.grid(
+  cp = seq(0.01, 0.1, by = 0.01)  # Adjust the range of cp as needed
+)
+
+# Define the train control
+ctrl <- trainControl(
+  method = "cv",
+  number = 5,  # Number of folds for cross-validation
+  verboseIter = TRUE
+)
+
+# Cross-validation using train function
+rf_cv <- train(
+  species ~ .,
+  data = train_data,
+  method = "rpart",
+  tuneGrid = tuning_grid,
+  trControl = ctrl
+)
+
+# Print the best model
+print(rf_cv)
+
+# Evaluate the performance of the best model on the test set
+rf_cv_pred <- predict(rf_cv, newdata = test_data)
+rf_cv_accuracy <- sum(rf_cv_pred == test_data$species) / nrow(test_data)
+cat("Tuned Ensemble(rpart) Accuracy:",rf_cv_accuracy,"\n")##Tuned Ensemble Accuracy:0.94
+```
+
+how this ensemble function works:
+first we use with-replacement sampling of train dataset to build multiple tress(which are parallel), then we make predictions based on each tree and decide the final prediction using the majority vote, here the ouput would be character "1", "2" and "3", use mapping to transform them to labels of data. Finally we compare the prediction with the test dataset and calculate the accuracy.
+In this dataset(penguins), using ensemble function we write acheives accuracy of 0.95, and using random forest package we acheives accuracy of 0.97, which turns out we have set a quite good algorithm.
