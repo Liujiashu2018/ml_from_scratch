@@ -31,40 +31,46 @@ test_data <- penguins[-sample_indices, ]
 
 ```{r}
 #use rpart package
-num_trees <- 100# Number of decision trees to create (simulating random forest)
-tree_list <- list()# Initialize an empty list to store individual decision trees
+ensemble_predict <- function(train_data, test_data, target_variable, num_trees = 100) {
+  # Initialize an empty list to store individual decision trees
+  tree_list <- list()
 
-# Build multiple decision trees
-for (i in 1:num_trees) {
-  # Create a bootstrap sample (sampling with replacement)
-  bootstrap_sample <- train_data[sample(1:nrow(train_data), replace = TRUE), ]
-  # Build a decision tree using rpart
-  tree <- rpart(species ~ ., data = bootstrap_sample, method = "class")
-  # Add the tree to the list
-  tree_list[[i]] <- tree
-}
+  # Build multiple decision trees
+  for (i in 1:num_trees) {
+    # Create a bootstrap sample (sampling with replacement)
+    bootstrap_sample <- train_data[sample(1:nrow(train_data), replace = TRUE), ]
 
-# Function to predict using the ensemble of decision trees
-ensemble_predict <- function(trees, data) {
-  # Make predictions using each tree
-  predictions <- lapply(trees, function(tree) predict(tree, newdata = data, type = "class"))
+    # Build a decision tree using rpart
+    formula <- as.formula(paste(target_variable, "~ ."))
+    tree <- rpart(formula, data = bootstrap_sample, method = "class")
+
+    # Add the tree to the list
+    tree_list[[i]] <- tree
+  }
+
+  # Make predictions using the ensemble of decision trees
+  predictions <- lapply(tree_list, function(tree) predict(tree, newdata = test_data, type = "class"))
+  
   # Combine predictions (majority vote)
   ensemble_pred <- do.call(cbind, predictions)
+
   # Map numerical labels to character labels
   label_mapping <- c("1" = "Adelie", "2" = "Chinstrap", "3" = "Gentoo")
   final_pred <- apply(ensemble_pred, 1, function(row) {
     majority_vote <- names(sort(table(row), decreasing = TRUE)[1])
     return(label_mapping[majority_vote])
   })
-  
+
   return(final_pred)
 }
-# Predict using the ensemble of decision trees
-ensemble_pred <- ensemble_predict(tree_list, test_data)
+
+#use penguins data
+target_variable <- "species"
+ensemble_pred <- ensemble_predict(train_data, test_data, target_variable)
 
 # Evaluate the accuracy of the ensemble model
 ensemble_accuracy <- sum(ensemble_pred == test_data$species) / nrow(test_data)
-cat("Ensemble (rpart) Accuracy:", ensemble_accuracy, "\n")##Ensemble Accuracy: 0.95
+cat("Ensemble (rpart) Accuracy:", ensemble_accuracy, "\n")#Ensemble (rpart) Accuracy: 0.96
 ```
 
 ```{r}
@@ -79,34 +85,40 @@ cat("Random Forest Accuracy:", rf_accuracy, "\n")##Random Forest Accuracy: 0.97
 
 ```{r}
 #cross-validation to prune hyperparameter complexity parameter (cp) 
-# Define the tuning grid which default is 0.01
-tuning_grid <- expand.grid(
-  cp = seq(0.01, 0.1, by = 0.01)  # Adjust the range of cp as needed
-)
-
-# Define the train control
-ctrl <- trainControl(
-  method = "cv",
-  number = 5,  # Number of folds for cross-validation
-  verboseIter = TRUE
-)
-
-# Cross-validation using train function
-rf_cv <- train(
-  species ~ .,
-  data = train_data,
-  method = "rpart",
-  tuneGrid = tuning_grid,
-  trControl = ctrl
-)
-
-# Print the best model
-print(rf_cv)
+rf_cv_function <- function(train_data, target) {
+  # Define the tuning grid which default is 0.01
+  tuning_grid <- expand.grid(
+    cp = seq(0.01, 0.1, by = 0.01)  # Adjust the range of cp as needed
+  )
+  
+  # Define the train control
+  ctrl <- trainControl(
+    method = "cv",
+    number = 5,  # Number of folds for cross-validation
+    verboseIter = TRUE
+  )
+  
+  # Cross-validation using train function
+  rf_cv <- train(
+    reformulate(names(train_data) %>% setdiff(target), response = target),
+    data = train_data,
+    method = "rpart",
+    tuneGrid = tuning_grid,
+    trControl = ctrl
+  )
+  
+  # Print the best model
+  print(rf_cv)
+  
+  # Return the trained model
+  return(rf_cv)
+}
+rf_cv <- rf_cv_function(train_data, 'species')
 
 # Evaluate the performance of the best model on the test set
 rf_cv_pred <- predict(rf_cv, newdata = test_data)
 rf_cv_accuracy <- sum(rf_cv_pred == test_data$species) / nrow(test_data)
-cat("Tuned Ensemble(rpart) Accuracy:",rf_cv_accuracy,"\n")##Tuned Ensemble Accuracy:0.94
+cat("Tuned Ensemble(rpart) Accuracy:",rf_cv_accuracy,"\n")##Tuned Ensemble Accuracy:0.9
 ```
 
 how this ensemble function works:
