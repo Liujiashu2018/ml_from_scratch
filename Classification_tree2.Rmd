@@ -1,0 +1,97 @@
+---
+title: "Classification_tree_test"
+author: "Jiashu Liu"
+date: "2023-12-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(palmerpenguins)
+library(tidyverse)
+library(dplyr)
+library(stringr)
+data("penguins")
+# Classification question: species classification
+# Predict the species of the penguin (e.g., Adelie, Chinstrap, Gentoo) based on other variables such as bill length, bill depth, flipper length, body mass, island, and sex.
+```
+
+```{r}
+# Preprocessing Data
+penguins <- na.omit(penguins)
+penguins <- penguins %>% 
+  select(-year)
+#penguins$island <- as.numeric(as.factor(penguins$island))
+#penguins$sex <- as.numeric(as.factor(penguins$sex))
+```
+
+Thoughts on building a simple classification tree:
+
+1. Define a function for gini_impurity
+2. Loop over all the predictors and possible split points. Pick the predictor that result in the lowest weighted average Gini impurity.
+
+OVERALL, there are 4 numerical variables and 2 categorical variables with at most 333 observations
+2.1 for numeric predictors, we should calculate the average for all adjacent penguins, and then calcualte the Gini impurity for each average numeric value.
+Choose the threshold that has the lowest weighted total Gini impurity
+2.2 for cateorical predictors, just calculate the Gini impurity
+
+3. Starting from the previously formed regions, repeat step 2. 
+4. Stop once no possible split can lower a node's Gini impurity. 
+
+```{r}
+numeric_features <- names(penguins)[sapply(penguins, is.numeric)]
+categorical_features <- names(penguins)[sapply(penguins, is.factor)] 
+
+print("Numeric Features:")
+print(numeric_features)
+
+print("Categorical Features:")
+print(categorical_features)
+```
+```{r}
+# Calculate Gini Index (Classification)
+gini_impurity <- function(y){
+  # assumes y if a factor with all levels
+  if(length(y) == 0) return(0)
+  p <- table(y)/length(y)
+  1-sum(p^2)
+}
+# Entropy (Classification)
+entropy <- function(y){
+  # assumes y is a factor with all levels
+  if(length(y)==0) return(0)
+  p <- table(y)/length(y)
+  sum(-p*log2(p+1e-9))
+}
+# Regression
+variance <- function(y){
+  if(length(y) <= 1) return(0)
+  var(y)
+}
+```
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

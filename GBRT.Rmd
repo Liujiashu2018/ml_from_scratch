@@ -1,0 +1,172 @@
+---
+title: "GBRT"
+output: html_document
+date: "2023-12-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(rpart)
+library(tidyr)
+library(tidyverse)
+library(gbm)
+library(palmerpenguins)
+data("penguins")
+```
+
+```{r}
+# Preprocess Penguins data
+penguins <- penguins %>% drop_na()
+```
+
+```{r}
+gbrt <- function(data, target, learning_rate = 0.1, n_trees = 100) {
+  models <- list() # store the sequence of the trees that will be created
+  residuals <- data[[target]] # Initially is just the target value, but later will be updated to (observed - predicted)
+
+# Iterate n_trees times to build the sequence of trees
+    for (i in 1:n_trees) {
+    tree <- rpart(residuals ~ ., data = data, method = "anova") # use anova for regression problem 
+    predictions <- predict(tree, data) 
+    
+    # The most crucial step in GBRT! Update the previous residual by subtracting the scaled predictions
+    residuals <- residuals - learning_rate * predictions
+    
+    # Update the target col in the dataset to new residuals. In the next iteration, this will be the new response variable. 
+    data[[target]] <- residuals
+    models[[i]] <- tree
+  }
+  
+  return(models)
+}
+```
+
+```{r}
+# Split data to test and train
+set.seed(123)  
+indices <- sample(1:nrow(penguins), 0.7 * nrow(penguins))
+train_data <- penguins[indices, ]
+test_data <- penguins[-indices, ]
+
+# Test the gbrt model
+target_col <- "body_mass_g"
+models <- gbrt(train_data, target_col)
+```
+
+```{r}
+# Make predictions
+predict_gbrt <- function(models, data, learning_rate = 0.1) {
+  predictions <- rep(0, nrow(data))
+  for (tree in models) {
+    predictions <- predictions + learning_rate * predict(tree, data)
+  }
+  return(predictions)
+}
+
+custom_predictions <- predict_gbrt(models, test_data)
+```
+
+```{r}
+# Evaluate model performance using RMSE
+rmse <- function(actual, predicted) {
+  sqrt(mean((actual - predicted) ^ 2))
+}
+rmse_custom <- rmse(test_data[[target_col]], custom_predictions)
+print(paste("RMSE Custom GBRT:", rmse_custom))
+```
+
+```{r}
+# Split data to test and train
+set.seed(123)  
+indices <- sample(1:nrow(penguins), 0.7 * nrow(penguins))
+train_data <- penguins[indices, ]
+test_data <- penguins[-indices, ]
+
+# Test the gbrt model
+target_col <- "body_mass_g"
+models <- gbrt(train_data, target_col)
+```
+
+```{r}
+# Make predictions
+predict_gbrt <- function(models, data, learning_rate = 0.1) {
+  predictions <- rep(0, nrow(data))
+  for (tree in models) {
+    predictions <- predictions + learning_rate * predict(tree, data)
+  }
+  return(predictions)
+}
+
+custom_predictions <- predict_gbrt(models, test_data)
+```
+
+```{r}
+# Evaluate model performance using RMSE
+rmse <- function(actual, predicted) {
+  sqrt(mean((actual - predicted) ^ 2))
+}
+rmse_custom <- rmse(test_data[[target_col]], custom_predictions)
+print(paste("RMSE Custom GBRT:", rmse_custom))
+```
+
+Testing penguins using existing gbm package in R
+```{r}
+# Convert the target column to numeric if it's not already
+train_data[[target_col]] <- as.numeric(train_data[[target_col]])
+test_data[[target_col]] <- as.numeric(test_data[[target_col]])
+# Set parameters
+n.trees <- 100
+interaction.depth <- 3
+shrinkage <- 0.1
+n.minobsinnode <- 10
+
+# Train the model
+gbm_model <- gbm(
+  formula = as.formula(paste(target_col, "~ .")),
+  distribution = "gaussian",
+  data = train_data,
+  n.trees = n.trees,
+  interaction.depth = interaction.depth,
+  shrinkage = shrinkage,
+  n.minobsinnode = n.minobsinnode,
+  cv.folds = 5,  # for cross-validation
+  verbose = FALSE
+)
+# Make predictions
+gbm_predictions <- predict(gbm_model, test_data, n.trees = n.trees)
+```
+
+```{r}
+# gbm rmse
+rmse_gbm <- rmse(test_data[[target_col]], gbm_predictions)
+print(paste("RMSE GBM:", rmse_gbm))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
