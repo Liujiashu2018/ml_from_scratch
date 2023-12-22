@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
 ```{r}
@@ -14,6 +14,7 @@ library(palmerpenguins)
 library(tidyverse)
 library(dplyr)
 library(stringr)
+library(DiagrammeR)
 data("penguins")
 # Classification question: species classification
 # Predict the species of the penguin (e.g., Adelie, Chinstrap, Gentoo) based on other variables such as bill length, bill depth, flipper length, body mass, island, and sex.
@@ -59,30 +60,172 @@ gini_impurity <- function(y){
   p <- table(y)/length(y)
   1-sum(p^2)
 }
-# Entropy (Classification)
-entropy <- function(y){
-  # assumes y is a factor with all levels
-  if(length(y)==0) return(0)
-  p <- table(y)/length(y)
-  sum(-p*log2(p+1e-9))
-}
-# Regression
-variance <- function(y){
-  if(length(y) <= 1) return(0)
-  var(y)
+```
+
+```{r}
+# Test the gini index function
+gini_impurity(penguins[,'species'])
+```
+Thoughts: 
+1. Get the best split
+2. After getting the best split, split the data based on the best split result. The recursive should happen in two parts, one for the left and one for the right. 
+```{r}
+# Get the weighted Gini Index
+weighted_gini <- function(left, right){
+  length_left <- length(left)
+  length_right <- length(right)
+  total_len <- length_left + length_right
+  gini_left <- gini_impurity(left)
+  gini_right <- gini_impurity(right)
+  weighted_gini <- (length_left/total_len) * gini_left + (length_right/total_len) * gini_right
+  return(weighted_gini)
 }
 ```
 
 ```{r}
+# Search for the best split (Root node)
+best_split <- function(data, target_variable){
+  best_gini_score <- 1 # Start from 1 because this is the maximum score of Gini impurity
+  best_split <- NULL
+  for (variable in names(data)){
+    if (variable != target_variable){
+      unique_values <- unique(data[,variable])
+      for (value in unique_values){
+        if (is.numeric(data[[variable]])){
+          left <- data[data[[variable]]< value, target_variable]
+          right <- data[data[[variable]] >= value, target_variable]
+        }
+        else{
+          left <- data[data[[variable]] == value, target_variable]
+          right <- data[data[[variable]]!= value, target_variable]
+        }
+        gini_score <- weighted_gini(left, right)
+        if(gini_score < best_gini_score){
+          best_gini_score <- gini_score
+          best_split <- list(
+            variable = variable, 
+            value = value, 
+            gini_score = gini_score)
+        }
+      }
+    }
+  }
+  return(best_split)
+}
+```
+
+```{r}
+# Test on the best split
+#split <- best_split(penguins, "species")
+#print(split)
+```
+
+```{r}
+classify_data <- function(data){
+  # Assume that the last column contains the labels
+  get_labels <- data[[ncol(data)]]
+  
+  # Calculate the frequency of each label
+  label_freq <- table(get_labels)
+  
+  # Find the label with the maximum frequency
+  max_freq <- max(label_freq)
+  
+  # Get all labels that have the maximum frequency
+  most_common_labels <- names(label_freq)[label_freq == max_freq]
+  
+  # Return the first label with the maximum frequency
+  # Alternatively, you could handle ties differently here
+  classification <- most_common_labels[1]
+  
+  return(classification)
+}
 
 ```
 
+```{r}
+# Apply recursive splitting to each of the subset and build the tree. 
+build_tree <- function(data, target_variable, max_depth, min_samples, current_depth = 0){
+  # Stopping criterion: a maximum tree depth or or a minimum number of samples in a leaf is met
+  if (nrow(data) <= min_samples || current_depth > max_depth){
+    return(list("Leaf", classify_data(data)))
+  }
+  # Compute the best split
+  best_split <- best_split(data, target_variable)
+  # First check if all data are in one group (no further split) 
+  if (is.null(best_split)){
+    return(list("Leaf", classify_data(data)))
+  }
+  # Split the dataset into left and right 
+  if (is.numeric(data[[split$variable]])) {
+    left_indices <- which(data[[split$variable]] < split$value)
+    right_indices <- which(data[[split$variable]] >= split$value)
+  } else {
+    left_indices <- which(data[[split$variable]] == split$value)
+    right_indices <- which(data[[split$variable]] != split$value)
+  }
+  left_set <- data[left_indices, ]
+  right_set <- data[right_indices, ]
+  
+  # Creat node
+  node <- list("Node", split$variable, split$value)
+  node$left <- build_tree(left_set, target_variable, max_depth, min_samples, current_depth + 1)
+  node$right <- build_tree(right_set, target_variable, max_depth, min_samples, current_depth + 1)
+  
+  return(node)
+}
+```
 
+```{r}
+set.seed(123) 
+sample_size <- floor(0.8 * nrow(penguins))
+train_indices <- sample(seq_len(nrow(penguins)), size = sample_size)
+train_data <- penguins[train_indices, ]
+test_data <- penguins[-train_indices, ]
+```
+```{r}
+# Build the tree using the training data
+my_tree <- build_tree(train_data, "species", max_depth = 5, min_samples = 1)
+```
 
+```{r}
+predict <- function(tree, data_point) {
+  # Base case: If the tree is a leaf, return its classification
+  if (tree[[1]] == "Leaf") {
+    return(tree[[2]])
+  }
 
+  # Extract the relevant split information
+  variable <- tree[[2]]
+  value_vector <- tree[[3]]
 
+  # Check if the feature value of the data point is in the value vector
+  if (data_point[[variable]] %in% value_vector) {
+    # If yes, go to the left child
+    return(predict(tree$left, data_point))
+  } else {
+    # If no, go to the right child
+    return(predict(tree$right, data_point))
+  }
+}
+```
 
+```{r}
+# Function to apply prediction to each row of the test data
+predict_test_data <- function(tree, test_data) {
+  apply(test_data, 1, function(x) predict(tree, x))
+}
 
+# Make predictions
+predictions <- predict_test_data(my_tree, test_data)
+
+# Evaluate the performance
+actual_classes <- test_data[["species"]]
+correct_predictions <- sum(predictions == actual_classes)
+accuracy <- correct_predictions / length(actual_classes)
+# Print the accuracy
+print(accuracy)
+```
 
 
 
