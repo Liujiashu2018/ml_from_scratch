@@ -7,3 +7,6 @@ It turns out the ensemble function we write have relative good prediction accura
 
 -Adaboost Regression Tree-
 For this method,Description: It includes a custom Adaboost regression tree function (adaboost_rt), which is is designed to train an Adaboost regression tree model. Then we compare the performance of the Adaboost model with a standard GBM model using the dataset `penguins`. Finally we write a cross-validation function (adaboost_cv) for hyperparameter tuning. 
+
+-knn-
+Description: We write two functions of knn and knn with cross-validation, use knn to calculate its accuracy based on the penguins dataset and use knn with cross-validation to tune hyperparameter k, finally we compare the accuracy with the original knn in class package based on the penguins dataset.  
