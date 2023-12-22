@@ -7,6 +7,7 @@ date: "2023-12-20"
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
 ```{r}
 library(rpart)
 library(tidyr)
@@ -45,40 +46,7 @@ gbrt <- function(data, target, learning_rate = 0.1, n_trees = 100) {
 
 ```{r}
 # Split data to test and train
-set.seed(123)  
-indices <- sample(1:nrow(penguins), 0.7 * nrow(penguins))
-train_data <- penguins[indices, ]
-test_data <- penguins[-indices, ]
-
-# Test the gbrt model
-target_col <- "body_mass_g"
-models <- gbrt(train_data, target_col)
-```
-
-```{r}
-# Make predictions
-predict_gbrt <- function(models, data, learning_rate = 0.1) {
-  predictions <- rep(0, nrow(data))
-  for (tree in models) {
-    predictions <- predictions + learning_rate * predict(tree, data)
-  }
-  return(predictions)
-}
-
-custom_predictions <- predict_gbrt(models, test_data)
-```
-
-```{r}
-# Evaluate model performance using RMSE
-rmse <- function(actual, predicted) {
-  sqrt(mean((actual - predicted) ^ 2))
-}
-rmse_custom <- rmse(test_data[[target_col]], custom_predictions)
-print(paste("RMSE Custom GBRT:", rmse_custom))
-```
-
-```{r}
-# Split data to test and train
+penguins <- penguins %>% drop_na()
 set.seed(123)  
 indices <- sample(1:nrow(penguins), 0.7 * nrow(penguins))
 train_data <- penguins[indices, ]
@@ -113,39 +81,83 @@ print(paste("RMSE Custom GBRT:", rmse_custom))
 
 Testing penguins using existing gbm package in R
 ```{r}
-# Convert the target column to numeric if it's not already
-train_data[[target_col]] <- as.numeric(train_data[[target_col]])
-test_data[[target_col]] <- as.numeric(test_data[[target_col]])
-# Set parameters
-n.trees <- 100
-interaction.depth <- 3
-shrinkage <- 0.1
-n.minobsinnode <- 10
-
 # Train the model
 gbm_model <- gbm(
   formula = as.formula(paste(target_col, "~ .")),
   distribution = "gaussian",
   data = train_data,
-  n.trees = n.trees,
-  interaction.depth = interaction.depth,
-  shrinkage = shrinkage,
-  n.minobsinnode = n.minobsinnode,
+  n.trees = 100,
   cv.folds = 5,  # for cross-validation
   verbose = FALSE
 )
+
 # Make predictions
 gbm_predictions <- predict(gbm_model, test_data, n.trees = n.trees)
-```
 
-```{r}
 # gbm rmse
 rmse_gbm <- rmse(test_data[[target_col]], gbm_predictions)
 print(paste("RMSE GBM:", rmse_gbm))
 ```
 
 
+```{r}
+# Define the cross-validation function for tuning the learning rate
+cross_validate_learning_rate <- function(data, target_col, learning_rates, n_trees = 100, folds = 5) {
+  set.seed(123)  # Set seed for reproducibility
+  
+  # Split data to test and train
+  indices <- sample(1:nrow(data), 0.7 * nrow(data))
+  train_data <- data[indices, ]
+  test_data <- data[-indices, ]
+  
+  # Initialize results data frame
+  cv_results <- data.frame(learning_rate = numeric(), rmse = numeric())
+  
+  for (lr in learning_rates) {
+    # Perform k-fold cross-validation
+    folds_indices <- createFolds(train_data[[target_col]], k = folds, list = TRUE, returnTrain = FALSE)
+    rmse_values <- numeric()
+    
+    for (fold in folds_indices) {
+      train_indices <- unlist(fold)
+      cv_train_data <- train_data[train_indices, ]
+      cv_test_data <- train_data[-train_indices, ]
+      
+      # Train GBRT model
+      models <- gbrt(cv_train_data, target_col, learning_rate = lr, n_trees = n_trees)
+      
+      # Make predictions
+      predictions <- predict_gbrt(models, cv_test_data, learning_rate = lr)
+      
+      # Evaluate RMSE
+      rmse_value <- rmse(cv_test_data[[target_col]], predictions)
+      rmse_values <- c(rmse_values, rmse_value)
+    }
+    
+    # Calculate average RMSE across folds
+    avg_rmse <- mean(rmse_values)
+    
+    # Store results
+    cv_results <- rbind(cv_results, data.frame(learning_rate = lr, rmse = avg_rmse))
+  }
+  
+  # Find the learning rate with the minimum RMSE
+  best_lr <- cv_results$learning_rate[which.min(cv_results$rmse)]
+  
+  # Print results
+  print(cv_results)
+  cat("Best Learning Rate:", best_lr, "\n")
+  
+  # Return the results
+  return(cv_results)
+}
 
+# Define the learning rates to tune
+learning_rates <- c(0.01, 0.05, 0.1, 0.2, 0.5)
+
+# Perform cross-validation
+cv_results <- cross_validate_learning_rate(penguins, target_col = "body_mass_g", learning_rates = learning_rates)
+```
 
 
 
