@@ -1,5 +1,5 @@
 # ML Algorithms from Scratch
-This project consists of 5 DIY machine learning algorithms: Classification tree, Random Forest, AdaBoost regression tree, Gradient Boost regression tree, and K-Nearest Neighbors. We have rewritten a function for each method to achieve similar outputs as their standard implementations. Additionally, for each method, we have developed a cross-validation function to tune one hyperparameter. The project includes each method, along with two functions, in an R package. Moreover, we compare the accuracy of our functions to that of the original R package, using the penguins dataset in R.
+This project consists of 5 DIY machine learning algorithms: Classification tree, Random Forest, AdaBoost regression tree, Gradient Boost regression tree, and K-Nearest Neighbors. We have rewritten a function for each method to achieve similar outputs as their standard implementations. Additionally, for each method, we have developed a cross-validation function to tune one hyperparameter. The project includes each method, along with two functions, in an R package. Moreover, we compare the accuracy of our functions to that of the original R package, using the penguins dataset in R. Link to the R packages: https://github.com/Eve1002
 
 -Classification Tree-
 
