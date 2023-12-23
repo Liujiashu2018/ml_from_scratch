@@ -91,14 +91,13 @@ print(paste("RMSE GBM:", rmse_gbm))#"RMSE GBM: 300.428501171076"
 ```{r}
 # Define the cross-validation function for tuning the learning rate
 gbrt_cv <- function(data, target, learning_rates, n_trees = 100, folds = 5) {
-  set.seed(123)  # Set seed for reproducibility
+  set.seed(123)  
   
-  # Split data to test and train
   indices <- sample(1:nrow(data), 0.7 * nrow(data))
   train_data <- data[indices, ]
   test_data <- data[-indices, ]
   
-  # Initialize results data frame
+  # Initialize results with a data frame
   cv_results <- data.frame(learning_rate = numeric(), rmse = numeric())
   
   for (lr in learning_rates) {
