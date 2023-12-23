@@ -9,6 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
+options(timeout=300)
 library(rpart)
 library(tidyr)
 library(tidyverse)
@@ -58,7 +59,7 @@ adaboost_rt <- function(data, outcome_var, M) {
 
 ```{r}
 # Preprocess Penguins data
-penguins <- penguins %>% drop_na()
+penguins <- penguins %>% drop_na() %>% select(-year)
 
 # Split data to test and train
 set.seed(123)  
@@ -66,14 +67,14 @@ indices <- sample(1:nrow(penguins), 0.7 * nrow(penguins))
 train_data <- penguins[indices, ]
 test_data <- penguins[-indices, ]
 
-# Test the Ada boosting regression tree model
-outcome_variable <- "body_mass_g"
+# Test the Adaboost model
+outcome_variable <- "species"
 models <- adaboost_rt(train_data, outcome_variable, 100)
 ```
 
 
 ```{r}
-# compare with standard function (gbm)
+# compare with standard function (adabag)
 predictions1 <- predict(models, test_data)
 observed1 <- test_data[[outcome_variable]]
 rmse_ada <- c()
@@ -81,24 +82,20 @@ for(m in 1:length(models)){
   rmse_ada[m] <- sqrt(mean((observed1 - predictions1[[m]][[1]]) ^ 2))
 }
 rmse1 <- rmse_ada[length(models)]
+```
 
-gbm_model <- gbm(
-  formula = as.formula(paste(outcome_variable, "~ .")),
-  distribution = "gaussian",
-  data = train_data,
-  n.trees = 100,
-  cv.folds = 5,  
-  verbose = FALSE
-)
-
-
-# Make predictions (gbm)
-gbm_predictions <- predict(gbm_model, test_data, n.trees = 100)
-
-rmse2 <- sqrt(mean((test_data[[outcome_variable]] - gbm_predictions) ^ 2))
-
-cat("rmse of adaboost", rmse1, "\n", 
-    "rmse of gbm (standard):", rmse2, "\n")
+```{r}
+# compare with adabag function (without cv)
+ada_model <- boosting(species ~ ., data = train_data, mfinal = 10)
+predictions <- predict(ada_model, newdata = test_data)
+confusion_matrix <- table(test_data$species, predictions$class)
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+accuracy
+```
+```{r}
+# compare with adabag function (with cv)
+cvmodel = boosting.cv(species ~., data = penguins, boos = TRUE, mfinal = 10, v =5)
+cvmodel$confusion
 ```
 
 ```{r}
@@ -119,10 +116,10 @@ adaboost_cv <- function(data, outcome_var, M, folds = 5) {
     train_data <- data[train_indices, ]
     validation_data <- data[validation_indices, ]
     
-    # Train AdaBoost model on training data
+    # Train AdaBoost model 
     models <- adaboost_rt(train_data, outcome_var, M)
 
-    # Make predictions on validation data
+    # Make predictions
     predictions <- predict(models, validation_data)
     
     for(m in 1:length(models)){
@@ -131,8 +128,6 @@ adaboost_cv <- function(data, outcome_var, M, folds = 5) {
     
     mse[i] <- mse1[length(models)]
   }
-  
-  # Return the average mean squared error across folds
   return(mean(mse))
 }
 
