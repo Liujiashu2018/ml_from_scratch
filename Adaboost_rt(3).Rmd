@@ -13,7 +13,8 @@ options(timeout=300)
 library(rpart)
 library(tidyr)
 library(tidyverse)
-library(gbm)
+# install.packages("adabag", dependencies = TRUE)
+library(adabag)
 library(caret)
 library(palmerpenguins)
 data("penguins")
@@ -59,7 +60,7 @@ adaboost_rt <- function(data, outcome_var, M) {
 
 ```{r}
 # Preprocess Penguins data
-penguins <- penguins %>% drop_na() %>% select(-year)
+penguins <- penguins %>% drop_na() 
 
 # Split data to test and train
 set.seed(123)  
@@ -68,10 +69,9 @@ train_data <- penguins[indices, ]
 test_data <- penguins[-indices, ]
 
 # Test the Adaboost model
-outcome_variable <- "species"
+outcome_variable <- "sex"
 models <- adaboost_rt(train_data, outcome_variable, 100)
 ```
-
 
 ```{r}
 # compare with standard function (adabag)
