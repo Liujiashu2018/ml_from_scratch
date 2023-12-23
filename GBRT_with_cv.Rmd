@@ -144,5 +144,5 @@ gbrt_cv <- function(data, target, learning_rates, n_trees = 100, folds = 5) {
 learning_rates <- c(0.01, 0.05, 0.1, 0.2, 0.5)
 
 # Perform cross-validation
-cv_results <- cross_validate_learning_rate(penguins, target = "body_mass_g", learning_rates = learning_rates)
+cv_results <- gbrt_cv(penguins, target = "body_mass_g", learning_rates = learning_rates)
 ```
