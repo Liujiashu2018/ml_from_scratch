@@ -22,6 +22,7 @@ library(tidyr)
 library(dplyr)
 library(tidyverse)
 library(class)
+library(caret)
 ```
 ## Euclidean Distance: 
 Distance between points $x_i$ and $x_j$ in p-dimentional space. It measures the diagonal distance between the two points.
