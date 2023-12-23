@@ -118,6 +118,9 @@ gbrt_cv <- function(data, target, learning_rates, n_trees = 100, folds = 5) {
       predictions <- predict_gbrt(models, cv_test_data, learning_rate = lr)
       
       # Evaluate RMSE
+     rmse <- function(actual, predicted) {
+        sqrt(mean((actual - predicted)^2))
+      }
       rmse_value <- rmse(cv_test_data[[target]], predictions)
       rmse_values <- c(rmse_values, rmse_value)
     }
