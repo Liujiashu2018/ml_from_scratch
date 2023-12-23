@@ -133,99 +133,51 @@ print(paste("Accuracy:", accuracy))
 ```
 
 ```{r}
-# Cross validation
-knn_cv_tune <- function(data, target, k_folds, k_range, distance_function) {
+KNN with cross validation
+knn_cv <- function(data, target, k_folds, k_neighbors, distance_function) {
   set.seed(123)
   shuffled_data <- data[sample(nrow(data)), ]
-  
+
   # Split data into k folds
   folds <- split(shuffled_data, cut(seq(1, nrow(shuffled_data)), breaks = k_folds, labels = FALSE))
 
-  k_accuracies <- numeric(length(k_range))
-  names(k_accuracies) <- as.character(k_range)
-  
-  for (k in k_range) {
-    accuracies <- numeric(k_folds)
-    # Cross-validation for each k
-    for (i in 1:k_folds) {
-      
-      test_data <- folds[[i]]
-      train_data <- do.call("rbind", folds[-i])
-      
-      # Extract labels
-      train_labels <- train_data[[target]]
-      test_labels <- test_data[[target]]
-      
-      # Remove labels from features
-      train_data <- train_data[, !names(train_data) %in% target]
-      test_data <- test_data[, !names(test_data) %in% target]
-      
-      # Run predictions
-      predictions <- knn(train_data, train_labels, test_data, k, distance_function)
-      accuracies[i] <- sum(predictions == test_labels) / length(test_labels)
-    }
-    # Store average accuracies
-    k_accuracies[as.character(k)] <- mean(accuracies)
+  # Define a function to calculate accuracy
+  calculate_accuracy <- function(predictions, test_labels) {
+    sum(predictions == test_labels) / length(test_labels)
   }
-  
-  return(k_accuracies)
+
+  accuracies <- numeric(k_folds)
+
+  # Cross-validation
+  for(i in 1:k_folds) {
+    # Splitting the data into training and test sets
+    test_data <- folds[[i]]
+    train_data <- do.call("rbind", folds[-i])
+
+    # Extract labels
+    train_labels <- train_data[[target]]
+    test_labels <- test_data[[target]]
+
+    # Remove labels from features
+    train_data <- train_data[, !names(train_data) %in% target]
+    test_data <- test_data[, !names(test_data) %in% target]
+
+    predictions <- knn(train_data, train_labels, test_data, k_neighbors, distance_function)
+    accuracies[i] <- calculate_accuracy(predictions, test_labels)
+  }
+
+  return(accuracies)
 }
-
-k_range <- 1:9
-k_accuracies <- knn_cv_tune(penguins, "species", k_folds = 5, k_range, euclidean_distance)
-
-# Find the best k value
-best_k <- which.max(k_accuracies)
-best_accuracy <- k_accuracies[best_k]
-print(paste("Best k:", best_k, "with accuracy:", best_accuracy))
 ```
 
 ```{r}
-# KNN with cross validation
-# knn_cv <- function(data, target, k_folds, k_neighbors, distance_function) {
-#   set.seed(123) 
-#   shuffled_data <- data[sample(nrow(data)), ]
-#   
-#   # Split data into k folds
-#   folds <- split(shuffled_data, cut(seq(1, nrow(shuffled_data)), breaks = k_folds, labels = FALSE))
-# 
-#   # Define a function to calculate accuracy
-#   calculate_accuracy <- function(predictions, test_labels) {
-#     sum(predictions == test_labels) / length(test_labels)
-#   }
-#   
-#   accuracies <- numeric(k_folds)
-#   
-#   # Cross-validation
-#   for(i in 1:k_folds) {
-#     # Splitting the data into training and test sets
-#     test_data <- folds[[i]]
-#     train_data <- do.call("rbind", folds[-i])
-#     
-#     # Extract labels
-#     train_labels <- train_data[[target]]
-#     test_labels <- test_data[[target]]
-#     
-#     # Remove labels from features
-#     train_data <- train_data[, !names(train_data) %in% target]
-#     test_data <- test_data[, !names(test_data) %in% target]
-#     
-#     predictions <- knn(train_data, train_labels, test_data, k_neighbors, distance_function)
-#     accuracies[i] <- calculate_accuracy(predictions, test_labels)
-#   }
-#   
-#   return(accuracies)
-# }
-```
+k_folds <- 5
+k_neighbors <- 5
+cv_results <- knn_cv(penguins, "species", k_folds, k_neighbors, euclidean_distance)
 
-```{r}
-# k_folds <- 5
-# k_neighbors <- 5
-# cv_results <- knn_cv(penguins, "species", k_folds, k_neighbors, euclidean_distance)
-# 
-# # Calculating the average accuracy
-# average_accuracy <- mean(cv_results)
-# print(paste("Average accuracy after cross validation:", average_accuracy))
+# Calculating the average accuracy
+average_accuracy <- mean(cv_results)
+print(paste("Average accuracy after cross validation:", average_accuracy))
 ```
 
 Compute KNN with Class package: 
