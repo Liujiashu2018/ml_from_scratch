@@ -19,11 +19,6 @@ library(caret)
 data("penguins")
 ```
 
-```{r}
-# Preprocess Penguins data
-penguins <- penguins %>% drop_na()
-```
-
 
 ```{r}
 # Split data to test and train
@@ -32,7 +27,7 @@ set.seed(123)
 indices <- sample(1:nrow(penguins), 0.7 * nrow(penguins))
 train_data <- penguins[indices, ]
 test_data <- penguins[-indices, ]
-target_col <- "body_mass_g"
+target <- "body_mass_g"
 ```
 
 ```{r}
@@ -65,11 +60,11 @@ gbrt <- function(train_data,test_data, target, learning_rate = 0.1, n_trees = 10
 
 ```{r}
 # Evaluate model performance using RMSE
-predictions <- gbrt(train_data,test_data,target_col)
+predictions <- gbrt(train_data,test_data,target)
 rmse <- function(actual, predicted) {
   sqrt(mean((actual - predicted) ^ 2))
 }
-rmse_custom <- rmse(test_data[[target_col]], predictions)
+rmse_custom <- rmse(test_data[[target]], predictions)
 print(paste("RMSE Custom GBRT:", rmse_custom))#"RMSE Custom GBRT: 1675.89703022131"
 ```
 
@@ -77,7 +72,7 @@ Testing penguins using existing gbm package in R
 ```{r}
 # Train the model
 gbm_model <- gbm(
-  formula = as.formula(paste(target_col, "~ .")),
+  formula = as.formula(paste(target, "~ .")),
   distribution = "gaussian",
   data = train_data,
   n.trees = 100,
@@ -88,14 +83,14 @@ gbm_model <- gbm(
 # Make predictions
 gbm_predictions <- predict(gbm_model, test_data)
 # gbm rmse
-rmse_gbm <- rmse(test_data[[target_col]], gbm_predictions)
+rmse_gbm <- rmse(test_data[[target]], gbm_predictions)
 print(paste("RMSE GBM:", rmse_gbm))#"RMSE GBM: 300.428501171076"
 ```
 
 
 ```{r}
 # Define the cross-validation function for tuning the learning rate
-gbrt_cv <- function(data, target_col, learning_rates, n_trees = 100, folds = 5) {
+gbrt_cv <- function(data, target, learning_rates, n_trees = 100, folds = 5) {
   set.seed(123)  # Set seed for reproducibility
   
   # Split data to test and train
@@ -108,7 +103,7 @@ gbrt_cv <- function(data, target_col, learning_rates, n_trees = 100, folds = 5) 
   
   for (lr in learning_rates) {
     # Perform k-fold cross-validation
-    folds_indices <- createFolds(train_data[[target_col]], k = folds, list = TRUE, returnTrain = FALSE)
+    folds_indices <- createFolds(train_data[[target]], k = folds, list = TRUE, returnTrain = FALSE)
     rmse_values <- numeric()
     
     for (fold in folds_indices) {
@@ -117,13 +112,16 @@ gbrt_cv <- function(data, target_col, learning_rates, n_trees = 100, folds = 5) 
       cv_test_data <- train_data[-train_indices, ]
       
       # Train GBRT model
-      models <- gbrt(cv_train_data, target_col, learning_rate = lr, n_trees = n_trees)
+      models <- gbrt(cv_train_data, target, learning_rate = lr, n_trees = n_trees)
       
       # Make predictions
       predictions <- predict_gbrt(models, cv_test_data, learning_rate = lr)
       
       # Evaluate RMSE
-      rmse_value <- rmse(cv_test_data[[target_col]], predictions)
+     rmse <- function(actual, predicted) {
+        sqrt(mean((actual - predicted)^2))
+      }
+      rmse_value <- rmse(cv_test_data[[target]], predictions)
       rmse_values <- c(rmse_values, rmse_value)
     }
     
@@ -149,5 +147,5 @@ gbrt_cv <- function(data, target_col, learning_rates, n_trees = 100, folds = 5) 
 learning_rates <- c(0.01, 0.05, 0.1, 0.2, 0.5)
 
 # Perform cross-validation
-cv_results <- cross_validate_learning_rate(penguins, target_col = "body_mass_g", learning_rates = learning_rates)
+cv_results <- gbrt_cv(penguins, target = "body_mass_g", learning_rates = learning_rates)
 ```
