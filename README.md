@@ -5,5 +5,11 @@ This project consists of 5 DIY machine learning methods:Classification tree, ran
 For this method,Description: First we use with-replacement sampling of train dataset to build multiple tress(which are parallel), then we make predictions based on each tree and decide the final prediction using the majority vote(may use mapping to transform to labels of data). Finally we compare the prediction with the test dataset and calculate the accuracy.
 It turns out the ensemble function we write have relative good prediction accuracy of 0.96 compare to the result of randomforest function of  0.97, when predicting the penguins species.
 
--Adaboost Regression Tree-
+-adaboost regression tree-
 For this method,Description: It includes a custom Adaboost regression tree function (adaboost_rt), which is is designed to train an Adaboost regression tree model. Then we compare the performance of the Adaboost model with a standard GBM model using the dataset `penguins`. Finally we write a cross-validation function (adaboost_cv) for hyperparameter tuning. 
+
+-knn-
+For this method,Description: There are two functions of knn and knn with cross-validation, use knn to calculate its accuracy based on the penguins dataset and use knn with cross-validation to tune hyperparameter k, finally we compare the accuracy with the original knn in class package based on the penguins dataset. 
+
+-gradient boost regression trees-
+For this method,Description: It includes a custom gradient boost regression tree function (gbrt), which is designed to train an gradient boost regression tree model and then make predictions. Then we compare the performance of the gradient boost regression model with a standard GBM model using the dataset `penguins`. Finally we write a cross-validation function (gbrt_cv) for hyperparameter tuning of learning rate. 
