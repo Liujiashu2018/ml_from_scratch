@@ -31,7 +31,7 @@ target <- "body_mass_g"
 ```
 
 ```{r}
-# Make predictions
+# Simple GBRT
 gbrt <- function(train_data,test_data, target, learning_rate = 0.1, n_trees = 100) {
   models <- list() # store the sequence of the trees that will be created
   residuals <- train_data[[target]] # Initially is just the target value, but later will be updated to (observed - predicted)
@@ -91,7 +91,7 @@ print(paste("RMSE GBM:", rmse_gbm))#"RMSE GBM: 300.428501171076"
 ```{r}
 # Define the cross-validation function for tuning the learning rate
 gbrt_cv <- function(data, target, learning_rates, n_trees = 100, folds = 5) {
-  set.seed(123)  # Set seed for reproducibility
+  set.seed(123)  
   
   # Split data to test and train
   indices <- sample(1:nrow(data), 0.7 * nrow(data))
@@ -111,7 +111,7 @@ gbrt_cv <- function(data, target, learning_rates, n_trees = 100, folds = 5) {
       cv_train_data <- train_data[train_indices, ]
       cv_test_data <- train_data[-train_indices, ]
       
-      # Train GBRT model
+      # Train GBRT
       models <- gbrt(cv_train_data, target, learning_rate = lr, n_trees = n_trees)
       
       # Make predictions
@@ -128,24 +128,19 @@ gbrt_cv <- function(data, target, learning_rates, n_trees = 100, folds = 5) {
     # Calculate average RMSE across folds
     avg_rmse <- mean(rmse_values)
     
-    # Store results
     cv_results <- rbind(cv_results, data.frame(learning_rate = lr, rmse = avg_rmse))
   }
   
   # Find the learning rate with the minimum RMSE
   best_lr <- cv_results$learning_rate[which.min(cv_results$rmse)]
   
-  # Print results
   print(cv_results)
   cat("Best Learning Rate:", best_lr, "\n")
   
-  # Return the results
   return(cv_results)
 }
 
 # Define the learning rates to tune
 learning_rates <- c(0.01, 0.05, 0.1, 0.2, 0.5)
-
-# Perform cross-validation
 cv_results <- gbrt_cv(penguins, target = "body_mass_g", learning_rates = learning_rates)
 ```
