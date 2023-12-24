@@ -35,6 +35,8 @@ For this method, the description is as follows: It includes a custom AdaBoost re
 
 For this method, the description is as follows: There are two functions, one for KNN and another for KNN with cross-validation.We use KNN to calculate its accuracy based on the penguins dataset, and we use KNN with cross-validation to tune the hyperparameter k. Finally, we compare this accuracy with that of the original KNN function in the 'class' package, also based on the penguins dataset.
 
+Before implementing cross-validation, our customized KNN algorithm had a prediction accuracy of 0.75. However, after incorporating cross-validation, the accuracy decreased to 0.4. We believe the high accuracy before cross-validation might be due to overfitting. This is in contrast to the class::knn function, which achieved an accuracy of 0.82. 
+
 -Gradient Boosted Regression Trees-
 
 For this method, the description is as follows: It includes a custom Gradient Boost Regression Tree function (gbrt), which is designed to train a Gradient Boost Regression Tree model and then make predictions. We then compare the performance of our Gradient Boost Regression model with a standard GBM model using the penguins dataset. Finally, we have developed a cross-validation function (gbrt_cv) for the hyperparameter tuning of the learning rate.
